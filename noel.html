@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cây Thông Noel 🎄</title>
+  <style>
+    :root{
+      --bg1:#07101a; --bg2:#0b1020;
+      --txt:#eaf2ff; --muted:#a9b6d3;
+      --card: rgba(255,255,255,.08);
+      --cardBorder: rgba(255,255,255,.14);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      height:100vh;
+      background: radial-gradient(1200px 700px at 50% 15%, #182a5c 0%, var(--bg2) 45%, var(--bg1) 100%);
+      color:var(--txt);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      overflow:hidden;
+    }
+    .wrap{
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:space-between;
+      padding: 14px 14px 18px;
+      gap: 12px;
+    }
+    canvas{
+      width: min(980px, 100vw);
+      height: calc(100vh - 170px); /* phần còn lại cho lời chúc */
+      display:block;
+      border-radius: 20px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      backdrop-filter: blur(10px);
+    }
+    .msg{
+      width: min(980px, 100%);
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--card);
+      border: 1px solid var(--cardBorder);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+    .msg strong{ font-weight:700; }
+    .hint{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c"></canvas>
+
+    <div class="msg">
+      <strong>My wish for you:</strong><br>
+Merry Christmas, anh Bảo 🎄 
+Dù gì hôm nay cũng là ngày sinh nhật của Chúa nên em sẽ gửi anh một cái ôm thật ấm (dù chỉ là tưởng tượng) 
+và một điều ước: Mong anh luôn vui vẻ, Giáng sinh ấm áp và cười thật nhiều nha ^^    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+
+    // DPR scale để nét hơn
+    function resize(){
+      const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+      const rect = canvas.getBoundingClientRect();
+      canvas.width  = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // vẽ theo CSS px
+    }
+    window.addEventListener("resize", resize);
+
+    // Tuyết
+    const snow = [];
+    function initSnow(){
+      snow.length = 0;
+      const rect = canvas.getBoundingClientRect();
+      const n = Math.floor(Math.min(220, rect.width * rect.height / 7000));
+      for(let i=0;i<n;i++){
+        snow.push({
+          x: Math.random()*rect.width,
+          y: Math.random()*rect.height,
+          r: 0.6 + Math.random()*2.0,
+          v: 0.4 + Math.random()*1.6,
+          drift: (Math.random()-0.5)*0.6,
+          a: 0.25 + Math.random()*0.55
+        });
+      }
+    }
+
+    // Đèn
+    const lights = [];
+    const lightColors = ["#f87171","#60a5fa","#34d399","#fbbf24","#c084fc","#fb7185","#22c55e","#38bdf8"];
+    function initLights(){
+      lights.length = 0;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+
+      // vùng cây thông (tam giác lớn)
+      const topY = h * 0.08;
+      const baseY = h * 0.86;
+      const centerX = w * 0.5;
+      const baseHalf = Math.min(w*0.35, 330);
+
+      const count = Math.floor(90 + w/8); // càng rộng càng nhiều đèn
+      for(let i=0;i<count;i++){
+        // random điểm trong tam giác bằng kỹ thuật barycentric
+        let r1 = Math.random(), r2 = Math.random();
+        if (r1 + r2 > 1){ r1 = 1-r1; r2 = 1-r2; }
+        const ax = centerX, ay = topY;
+        const bx = centerX - baseHalf, by = baseY;
+        const cx = centerX + baseHalf, cy = baseY;
+
+        const x = ax + r1*(bx-ax) + r2*(cx-ax);
+        const y = ay + r1*(by-ay) + r2*(cy-ay);
+
+        lights.push({
+          x, y,
+          r: 2 + Math.random()*3.2,
+          c: lightColors[Math.floor(Math.random()*lightColors.length)],
+          phase: Math.random()*Math.PI*2
+        });
+      }
+    }
+
+    // Vẽ nền sao nhẹ
+    function drawStars(w,h){
+      for(let i=0;i<40;i++){
+        const x = (i*97 % 997) / 997 * w;
+        const y = (i*53 % 991) / 991 * (h*0.55);
+        const r = 0.6 + (i%7)*0.12;
+        ctx.globalAlpha = 0.22;
+        ctx.beginPath();
+        ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Vẽ cây thông lớn (nhiều lớp)
+    function drawTree(w,h,t){
+      const centerX = w*0.5;
+      const topY = h*0.07;
+      const baseY = h*0.86;
+
+      // ánh sáng nền
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      const glow = ctx.createRadialGradient(centerX, h*0.45, 10, centerX, h*0.55, Math.min(w,h)*0.55);
+      glow.addColorStop(0, "rgba(125, 211, 252, 0.35)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0,0,w,h);
+      ctx.restore();
+
+      // Sao
+      const starX = centerX, starY = topY + 18;
+      ctx.save();
+      ctx.translate(starX, starY);
+      ctx.rotate(Math.sin(t*0.001)*0.08);
+      const starPulse = 0.9 + 0.12*Math.sin(t*0.006);
+      ctx.scale(starPulse, starPulse);
+      ctx.fillStyle = "#ffd56a";
+      ctx.shadowColor = "rgba(255, 213, 106, 0.85)";
+      ctx.shadowBlur = 18;
+
+      // vẽ sao 5 cánh
+      ctx.beginPath();
+      const spikes = 5, outerR = 16, innerR = 7;
+      for(let i=0;i<spikes*2;i++){
+        const ang = (Math.PI/2) + i*(Math.PI/spikes);
+        const r = (i%2===0) ? outerR : innerR;
+        ctx.lineTo(Math.cos(ang)*r, -Math.sin(ang)*r);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Thân cây (trunk)
+      const trunkW = Math.min(w*0.10, 110);
+      const trunkH = Math.min(h*0.12, 120);
+      const trunkX = centerX - trunkW/2;
+      const trunkY = baseY - trunkH*0.10;
+
+      // tán cây nhiều tầng để dày và "to"
+      const layers = 6;
+      for(let i=0;i<layers;i++){
+        const p = i/(layers-1);
+        const layerTop = topY + p*(h*0.36);
+        const layerBase = topY + (p+0.28)*(h*0.45) + i*10;
+        const halfW = (0.18 + p*0.30) * w;
+        const shade = 0.55 + p*0.25;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, layerTop);
+        ctx.lineTo(centerX - halfW, layerBase);
+        ctx.lineTo(centerX + halfW, layerBase);
+        ctx.closePath();
+
+        ctx.fillStyle = `rgba(${Math.floor(40*shade)}, ${Math.floor(180*shade)}, ${Math.floor(120*shade)}, 0.95)`;
+        ctx.shadowColor = "rgba(0,0,0,0.25)";
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // viền nhẹ
+        ctx.strokeStyle = "rgba(255,255,255,0.06)";
+        ctx.stroke();
+      }
+
+      // trunk
+      ctx.save();
+      ctx.fillStyle = "#b9855b";
+      ctx.shadowColor = "rgba(0,0,0,0.35)";
+      ctx.shadowBlur = 14;
+      ctx.fillRect(trunkX, trunkY, trunkW, trunkH);
+      ctx.shadowBlur = 0;
+
+      // đế
+      const baseW = trunkW*1.8;
+      ctx.fillStyle = "rgba(185,133,91,0.85)";
+      ctx.fillRect(centerX-baseW/2, trunkY+trunkH+8, baseW, 10);
+      ctx.restore();
+    }
+
+    // Vẽ dây kim tuyến
+    function drawGarlands(w,h){
+      const centerX = w*0.5;
+      const topY = h*0.10;
+      const baseY = h*0.82;
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 2;
+
+      const bands = 5;
+      for(let i=0;i<bands;i++){
+        const y = topY + (i+1)*(baseY-topY)/(bands+1);
+        const amp = (i+1)*8;
+        const span = (i+1)*w*0.12;
+        ctx.beginPath();
+        for(let x=-span;x<=span;x+=6){
+          const px = centerX + x;
+          const py = y + Math.sin((x/span)*Math.PI)*amp;
+          if(x===-span) ctx.moveTo(px,py);
+          else ctx.lineTo(px,py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // Nhấp nháy đèn
+    let blinking = true;
+    function drawLights(t){
+      if(!lights.length) return;
+      ctx.save();
+      for(const L of lights){
+        const tw = blinking ? (0.45 + 0.55*(0.5 + 0.5*Math.sin(t*0.006 + L.phase))) : 1;
+        const r = L.r * (0.85 + tw*0.45);
+
+        // glow
+        ctx.globalAlpha = 0.18 + tw*0.55;
+        ctx.fillStyle = L.c;
+        ctx.shadowColor = L.c;
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(L.x, L.y, r+2.4, 0, Math.PI*2);
+        ctx.fill();
+
+        // core
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.6 + tw*0.4;
+        ctx.beginPath();
+        ctx.arc(L.x, L.y, r, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawSnow(w,h){
+      const rect = canvas.getBoundingClientRect();
+      ctx.save();
+      for(const s of snow){
+        s.y += s.v;
+        s.x += s.drift;
+        if(s.y > rect.height + 10){ s.y = -10; s.x = Math.random()*rect.width; }
+        if(s.x < -10) s.x = rect.width + 10;
+        if(s.x > rect.width + 10) s.x = -10;
+
+        ctx.globalAlpha = s.a;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    function frame(t){
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+
+      // clear
+      ctx.clearRect(0,0,w,h);
+
+      // background haze
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(1, "rgba(0,0,0,0.35)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,w,h);
+      ctx.restore();
+
+      drawStars(w,h);
+      drawTree(w,h,t);
+      drawGarlands(w,h);
+      drawLights(t);
+      drawSnow(w,h);
+
+      requestAnimationFrame(frame);
+    }
+
+    // Space để tắt/bật nhấp nháy
+    window.addEventListener("keydown", (e) => {
+      if(e.code === "Space"){
+        e.preventDefault();
+        blinking = !blinking;
+      }
+    });
+
+    // init
+    resize();
+    initSnow();
+    initLights();
+    requestAnimationFrame(frame);
+
+    // nếu resize thì re-init cho đẹp
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        resize();
+        initSnow();
+        initLights();
+      }, 120);
+    });
+  </script>
+</body>
+</html>
